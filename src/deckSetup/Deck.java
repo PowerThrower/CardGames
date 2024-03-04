@@ -4,9 +4,8 @@ import java.io.*;
 import java.util.*;
 
 public class Deck {
-	protected ArrayList<Card> gameDeck = new ArrayList<Card>();
-	
-	public Deck(String setupFile) throws FileNotFoundException {
+	public static ArrayList<Card> importDeck(String setupFile) throws FileNotFoundException {
+		ArrayList<Card> gameDeck = new ArrayList<Card>();
 		File setup = new File("data/" + setupFile);
 		Scanner scanner = new Scanner(setup);
 		while (scanner.hasNextLine()) {
@@ -20,9 +19,10 @@ public class Deck {
 				gameDeck.add(card);
 			}
 		}
+		return gameDeck;
 	}
 	
-	public ArrayList<Card> getDeck() {
-		return gameDeck;
+	public static ArrayList<Card> generateDeck(int numCards) {
+		return null;
 	}
 }

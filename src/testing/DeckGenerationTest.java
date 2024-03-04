@@ -9,12 +9,12 @@ import org.junit.jupiter.api.*;
 import deckSetup.*;
 
 public class DeckGenerationTest {
-	private static Deck deckStandard;
+	private static ArrayList<Card> deckStandard;
 	
 	@BeforeAll
 	public static void setUp() {
 		try {
-			deckStandard = new Deck("StandardDeck.txt");
+			deckStandard = Deck.importDeck("StandardDeck.txt");
 		} catch (FileNotFoundException e) {
 			System.out.print("File Not Found");
 		}
@@ -22,9 +22,8 @@ public class DeckGenerationTest {
 	
 	@Test
 	public void testCardGeneration() {
-		ArrayList<Card> gameDeck = deckStandard.getDeck();
-		Card[] arrayDeck = new Card[gameDeck.size()];
-		arrayDeck = gameDeck.toArray(arrayDeck);
+		Card[] arrayDeck = new Card[deckStandard.size()];
+		arrayDeck = deckStandard.toArray(arrayDeck);
 		
 		System.out.print(arrayDeck.length);
 		assert(arrayDeck.length == 52);
