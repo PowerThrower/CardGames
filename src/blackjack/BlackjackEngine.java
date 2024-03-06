@@ -8,11 +8,11 @@ public class BlackjackEngine {
 	private static ArrayList<Card> referenceDeck;
 	protected static ArrayList<Card> mainDeck;
 	
+	protected static int numPlayers;
 	protected static int[] scores;
 	protected static int[] acesUnaccountedFor;
 	protected static Map<Integer, ArrayList<Card>> cards;
 	protected static boolean[] isDone;
-	protected static boolean gameDone;
 	
 	public static void initializeDecks() {
 		try {
@@ -51,7 +51,7 @@ public class BlackjackEngine {
 		}
 	}
 	
-	public static void deal(int numPlayers) {
+	public static void deal() {
 		scores = new int[numPlayers + 1];
 		acesUnaccountedFor = new int[numPlayers + 1];
 		isDone = new boolean[numPlayers + 1];
@@ -71,6 +71,13 @@ public class BlackjackEngine {
 	
 	public static void drawFromDeck(int playerNum) {
 		Card drawn = mainDeck.remove(0);
+		if (playerNum != 0) {
+			System.out.println("Player " + playerNum + " has drawn a " + drawn.getValue() + " of " + drawn.getSuit() + "!");
+		}
+		else {
+			System.out.println("The dealer has drawn a " + drawn.getValue() + " of " + drawn.getSuit() + "!");
+		}
+		
 		scores[playerNum] += assignScore(drawn);
 		if (drawn.getValue() == CardValue.ACE) {
 			acesUnaccountedFor[playerNum]++;
@@ -81,12 +88,11 @@ public class BlackjackEngine {
 	public static void scoreHandler(int playerNum) {
 		if (scores[playerNum] == 21) {
 			if (playerNum == 0) {
-				System.out.println("Dealer has 21! You lose!");
-				gameDone = true;
+				System.out.println("The dealer has a score 21! They hold!");
 				return;
 			}
 			else {
-				System.out.println("Player " + playerNum + " has 21! They hold!");
+				System.out.println("Player " + playerNum + " has a score of 21! They hold!");
 				isDone[playerNum] = true;
 				return;
 			}
@@ -94,7 +100,7 @@ public class BlackjackEngine {
 		else if (scores[playerNum] > 21 && acesUnaccountedFor[playerNum] == 0) {
 			if (playerNum == 0) {
 				System.out.println("The dealer has overdrawn! All remaining players win!");
-				gameDone = true;
+				isDone[0] = true;
 				return;
 			}
 			else {
@@ -113,14 +119,31 @@ public class BlackjackEngine {
 		}
 	}
 	
-	public static void round(int numPlayers) {
-		scoreHandler(0);
-		System.out.println("The dealer has " + scores[0] + "!");
-		if (gameDone == false) {
+	public static void evaluateEnd() {
+		for (int i = 1; i <= numPlayers; i++) {
+			if (scores[0] > scores[i]) {
+				System.out.println("Player " + i + " has a lower score than the dealer! Player " + i + " loses!");
+			}
+			else if (scores[0] == scores[i]) {
+				System.out.println("Player " + i + " ties with the dealer!");
+			}
+			else {
+				System.out.println("Player " + i + " wins!");
+			}
+		}
+	}
+	
+	public static void round() {
+		if (scores[0] == 21) {
+			System.out.println("Too bad! The dealer has 21! Game over!");
+			return;
+		}
+		else {
+			System.out.println("The dealer has a score of " + scores[0] + "!");
 			for (int i = 1; i <= numPlayers; i++) {
 				while (isDone[i] == false) {
 					Scanner input = new Scanner(System.in);
-					System.out.println("Player " + i + " has " + scores[i] + "!");
+					System.out.println("Player " + i + " has a score of " + scores[i] + "!");
 					System.out.println("Hold or Draw?");
 					String choice = input.nextLine();
 					if (choice.toLowerCase().equals("hold")) {
@@ -135,37 +158,36 @@ public class BlackjackEngine {
 					}
 				}
 			}
-			
-			if (scores[0] >= 18) {
-				System.out.println("The dealer holds!");
-			}
-			else {
-				while (gameDone == false) {
+			while (isDone[0] == false) {
+				System.out.println("The dealer has a score of " + scores[0] + "!");
+				if (scores[0] >= 18) {
+					System.out.println("The dealer holds!");
+					isDone[0] = true;
+					evaluateEnd();
+				}
+				else {
 					drawFromDeck(0);
 					scoreHandler(0);
-					if (gameDone == false) {
-						System.out.println("The dealer has " + scores[0] + "!");
-					}
 				}
 			}
 		}
 	}
 	
 	public static void game() {
-		int number = 0;
+		numPlayers = 0;
 		Scanner input = new Scanner(System.in);
 		do {
 		System.out.println("Number of Players?");
 		String answer = input.nextLine();
 			try {
-				number = Integer.parseInt(answer);
+				numPlayers = Integer.parseInt(answer);
 			} catch (NumberFormatException e) {
 				System.out.println("Invalid input.");
 			}
-		} while (number == 0);
+		} while (numPlayers == 0);
 		initializeDecks();
-		deal(number);
-		round(number);
+		deal();
+		round();
 		input.close();
 	}
 	
