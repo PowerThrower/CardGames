@@ -11,8 +11,10 @@ public class BlackjackEngine {
 	protected static int[] scores;
 	protected static int[] acesUnaccountedFor;
 	protected static Map<Integer, ArrayList<Card>> cards;
+	protected static boolean[] isDone;
+	protected static boolean gameDone;
 	
-	public void initializeDecks() {
+	public static void initializeDecks() {
 		try {
 			referenceDeck = Deck.importDeck("StandardDeck.txt");
 		} catch (FileNotFoundException e) {
@@ -22,7 +24,7 @@ public class BlackjackEngine {
 		mainDeck = (ArrayList<Card>) referenceDeck.clone();
 	}
 	
-	public int assignScore(Card card) {
+	public static int assignScore(Card card) {
 		switch(card.getValue()) {
 			case TWO:
 				return 2;
@@ -49,36 +51,126 @@ public class BlackjackEngine {
 		}
 	}
 	
-	public void deal(int numPlayers) {
-		scores = new int[numPlayers];
-		acesUnaccountedFor = new int[numPlayers];
+	public static void deal(int numPlayers) {
+		scores = new int[numPlayers + 1];
+		acesUnaccountedFor = new int[numPlayers + 1];
+		isDone = new boolean[numPlayers + 1];
 		
 		cards = new HashMap<Integer, ArrayList<Card>>();
 		for (int i = 0; i <= numPlayers; i++) {
 			cards.put(i, new ArrayList<Card>());
 		}
 		
-		for (int i = 0; i <= (numPlayers * 2) + 1; i++) {
-			Collections.shuffle(mainDeck);
-			Card drawn = mainDeck.remove(0);
-			scores[i % (numPlayers + 1)] += assignScore(drawn);
-			if (drawn.getValue() == CardValue.ACE) {
-				acesUnaccountedFor[i % (numPlayers + 1)]++;
+		Collections.shuffle(mainDeck);
+		for (int i = 0; i <= 1; i++) {
+			for (int j = 0; j <= numPlayers; j++) {
+				drawFromDeck(j);
 			}
-			cards.get(i % (numPlayers + 1)).add(drawn);
 		}
 	}
 	
-	public void turn() {
-		if(scores[0] == 21) {
-			System.out.println("Dealer has 21! You lose!");
+	public static void drawFromDeck(int playerNum) {
+		Card drawn = mainDeck.remove(0);
+		scores[playerNum] += assignScore(drawn);
+		if (drawn.getValue() == CardValue.ACE) {
+			acesUnaccountedFor[playerNum]++;
+		}
+		cards.get(playerNum).add(drawn);
+	}
+	
+	public static void scoreHandler(int playerNum) {
+		if (scores[playerNum] == 21) {
+			if (playerNum == 0) {
+				System.out.println("Dealer has 21! You lose!");
+				gameDone = true;
+				return;
+			}
+			else {
+				System.out.println("Player " + playerNum + " has 21! They hold!");
+				isDone[playerNum] = true;
+				return;
+			}
+		}
+		else if (scores[playerNum] > 21 && acesUnaccountedFor[playerNum] == 0) {
+			if (playerNum == 0) {
+				System.out.println("The dealer has overdrawn! All remaining players win!");
+				gameDone = true;
+				return;
+			}
+			else {
+				System.out.println("Player " + playerNum + " has overdrawn! They lose!");
+				isDone[playerNum] = true;
+				return;
+			}
+		}
+		else if (scores[playerNum] > 21){
+			scores[playerNum] -= 10;
+			acesUnaccountedFor[playerNum]--;
 			return;
 		}
-		
+		else {
+			return;
+		}
+	}
+	
+	public static void round(int numPlayers) {
+		scoreHandler(0);
+		System.out.println("The dealer has " + scores[0] + "!");
+		if (gameDone == false) {
+			for (int i = 1; i <= numPlayers; i++) {
+				while (isDone[i] == false) {
+					Scanner input = new Scanner(System.in);
+					System.out.println("Player " + i + " has " + scores[i] + "!");
+					System.out.println("Hold or Draw?");
+					String choice = input.nextLine();
+					if (choice.toLowerCase().equals("hold")) {
+						isDone[i] = true;
+					}
+					else if (choice.toLowerCase().equals("draw")) {
+						drawFromDeck(i);
+						scoreHandler(i);
+					}
+					else {
+						System.out.println("I'm sorry, I do not understand.");
+					}
+				}
+			}
+			
+			if (scores[0] >= 18) {
+				System.out.println("The dealer holds!");
+			}
+			else {
+				while (gameDone == false) {
+					drawFromDeck(0);
+					scoreHandler(0);
+					if (gameDone == false) {
+						System.out.println("The dealer has " + scores[0] + "!");
+					}
+				}
+			}
+		}
+	}
+	
+	public static void game() {
+		int number = 0;
+		Scanner input = new Scanner(System.in);
+		do {
+		System.out.println("Number of Players?");
+		String answer = input.nextLine();
+			try {
+				number = Integer.parseInt(answer);
+			} catch (NumberFormatException e) {
+				System.out.println("Invalid input.");
+			}
+		} while (number == 0);
+		initializeDecks();
+		deal(number);
+		round(number);
+		input.close();
 	}
 	
 	public static void main(String args[]) {
-		
+		game();
 	}
 	
 }
