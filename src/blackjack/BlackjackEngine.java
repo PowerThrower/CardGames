@@ -9,6 +9,7 @@ public class BlackjackEngine {
 	protected static ArrayList<Card> mainDeck;
 	
 	protected static int numPlayers;
+	protected static int maxPlayers;
 	protected static int[] scores;
 	protected static int[] acesUnaccountedFor;
 	protected static Map<Integer, ArrayList<Card>> cards;
@@ -17,12 +18,30 @@ public class BlackjackEngine {
 	
 	public static void initializeDecks() {
 		try {
-			referenceDeck = Deck.importDeck("StandardDeck.txt");
+			referenceDeck = Deck.importDeck("SplitDeck.txt");
 		} catch (FileNotFoundException e) {
 			System.out.print("File Not Found");
 		}
 		
 		mainDeck = (ArrayList<Card>) referenceDeck.clone();
+	}
+	
+	
+	public static int maxPlayerCalc() {
+		int numCards = 0;
+		int deckSumValue = 0;
+		for (Card i : referenceDeck) {
+			numCards++;
+			deckSumValue += assignScore(i);
+		}
+		int maxPlayersByCards = (numCards/2) - 1;
+		int maxPlayersBySumValue = (deckSumValue/21) - 1;
+		
+		if (maxPlayersByCards <= maxPlayersBySumValue) {
+			return maxPlayersByCards;
+		} else {
+			return maxPlayersBySumValue;
+		}
 	}
 	
 	public static int assignScore(Card card) {
@@ -53,10 +72,10 @@ public class BlackjackEngine {
 	}
 	
 	public static void deal() {
-		scores = new int[numPlayers + 1];
-		acesUnaccountedFor = new int[numPlayers + 1];
-		isDone = new boolean[numPlayers + 1];
-		blackjack = new boolean[numPlayers + 1];
+		scores = new int[(numPlayers + 1) * 2];
+		acesUnaccountedFor = new int[(numPlayers + 1) * 2];
+		isDone = new boolean[(numPlayers + 1) * 2];
+		blackjack = new boolean[(numPlayers + 1) * 2];
 		
 		cards = new HashMap<Integer, ArrayList<Card>>();
 		for (int i = 0; i <= numPlayers; i++) {
@@ -80,7 +99,7 @@ public class BlackjackEngine {
 	public static void drawFromDeck(int playerNum, boolean hideCard) {
 		Card drawn = mainDeck.remove(0);
 		if (playerNum != 0) {
-			System.out.println("Player " + playerNum + " has drawn a " + drawn.getValue() + " of " + drawn.getSuit() + "!");
+			System.out.println("Player " + (playerNum % numPlayers) + " has drawn a " + drawn.getValue() + " of " + drawn.getSuit() + "!");
 		}
 		else if (!hideCard) {
 			System.out.println("The dealer has drawn a " + drawn.getValue() + " of " + drawn.getSuit() + "!");
@@ -95,6 +114,9 @@ public class BlackjackEngine {
 			acesUnaccountedFor[playerNum]++;
 		}
 		cards.get(playerNum).add(drawn);
+		
+		
+		
 	}
 	
 	public static void dealerReveal(boolean start) {
@@ -142,29 +164,41 @@ public class BlackjackEngine {
 	}
 	
 	public static void evaluateEnd() {
-		for (int i = 1; i <= numPlayers; i++) {
+		for (int i = 1; i <= numPlayers * 2; i++) {
+			if (cards.get(i) == null) {
+				continue;
+			}
+			
+			int playerNum;
+			if (i <= numPlayers) {
+				playerNum = i;
+			}
+			else {
+				playerNum = i % numPlayers;
+			}
+			
 			if (blackjack[0]) {
 				if (blackjack[i]) {
-					System.out.println("Both the dealer and Player " + i + " have blackjacks! It's a tie!");
+					System.out.println("Both the dealer and Player " + playerNum + " have blackjacks! It's a tie!");
 				} else
-					System.out.println("Player " + i + " does not have a blackjack! They lose!");
+					System.out.println("Player " + playerNum + " does not have a blackjack! They lose!");
 			} else if (blackjack[i]) {
-				System.out.println("Player " + i + " wins!");
+				System.out.println("Player " + playerNum + " wins!");
 			} else if (scores[0] <= 21 && scores[i] <= 21) {
 				if (scores[0] > scores[i]) {
-					System.out.println("Player " + i + " has a lower score than the dealer! Player " + i + " loses!");
+					System.out.println("Player " + playerNum + " has a lower score than the dealer! Player " + playerNum + " loses!");
 				}
 				else if (scores[0] == scores[i]) {
-					System.out.println("Player " + i + " ties with the dealer!");
+					System.out.println("Player " + playerNum + " ties with the dealer!");
 				}
 				else {
-					System.out.println("Player " + i + " wins!");
+					System.out.println("Player " + playerNum + " wins!");
 				}
 			} else {
 				if (scores[i] <= 21) {
-					System.out.println("Player " + i + " wins!");
+					System.out.println("Player " + playerNum + " wins!");
 				} else
-					System.out.println("Player " + i + " loses!");
+					System.out.println("Player " + playerNum + " loses!");
 			}
 		}
 	}
@@ -187,11 +221,32 @@ public class BlackjackEngine {
 		}
 		else {
 			for (int i = 1; i <= numPlayers; i++) {
+				boolean isSplit = false;
+				Scanner input = new Scanner(System.in);
+				
+				if (cards.get(i).get(0).getValue() == cards.get(i).get(1).getValue()) {
+					System.out.println("Player " + i + " has two cards of the same class! Would you like to Split, Yes or No?");
+					String split = input.nextLine();
+					if (split.toLowerCase().equals("yes")) {
+						isSplit = true;
+						cards.put(i + numPlayers, new ArrayList<Card>());
+						scores[i] -= assignScore(cards.get(i).get(0));
+						scores[i + numPlayers] += assignScore(cards.get(i).get(0));
+						if (cards.get(i).get(0).getValue() == CardValue.ACE) {
+							acesUnaccountedFor[i]--;
+							acesUnaccountedFor[i + numPlayers]++;
+						}
+						cards.get(i + numPlayers).add(cards.get(i).remove(0));
+						drawFromDeck(i, false);
+					}
+				}
+				
+				System.out.println("Player " + i + "'s turn!");
 				while (isDone[i] == false) {
-					Scanner input = new Scanner(System.in);
-					System.out.println("Player " + i + "'s turn! You have a score of " + scores[i] + "!");
+					System.out.println("Player " + i + " has a score of " + scores[i] + "!");
 					System.out.println("Stand or Hit?");
 					String choice = input.nextLine();
+					
 					if (choice.toLowerCase().equals("stand")) {
 						isDone[i] = true;
 					}
@@ -201,6 +256,28 @@ public class BlackjackEngine {
 					}
 					else {
 						System.out.println("I'm sorry, I do not understand.");
+					}
+				}
+				
+				if (isSplit) {
+					System.out.println("Player " + i + "'s second hand!");
+					int j = i + numPlayers;
+					
+					while (isDone[j] == false) {
+						System.out.println("Player " + (j - numPlayers) + " has a score of " + scores[j] + "!");
+						System.out.println("Stand or Hit?");
+						String choice = input.nextLine();
+					
+						if (choice.toLowerCase().equals("stand")) {
+							isDone[j] = true;
+						}
+						else if (choice.toLowerCase().equals("hit")) {
+							drawFromDeck(j, false);
+							scoreHandler(j);
+						}
+						else {
+							System.out.println("I'm sorry, I do not understand.");
+						}
 					}
 				}
 			}
@@ -222,18 +299,27 @@ public class BlackjackEngine {
 	}
 	
 	public static void game() {
+		initializeDecks();
+		maxPlayers = maxPlayerCalc();
+		if (maxPlayers <= 0) {
+			System.out.println("Sorry, this deck cannot be used to play blackjack. Please try another deck.");
+			return;
+		}
+		
 		numPlayers = 0;
 		Scanner input = new Scanner(System.in);
+		
 		do {
-		System.out.println("Number of Players?");
+		System.out.println("For Blackjack, the deck provided can support at most " + maxPlayers + " Players. How many players would you like?");
 		String answer = input.nextLine();
 			try {
 				numPlayers = Integer.parseInt(answer);
 			} catch (NumberFormatException e) {
+				
+			} finally {
 				System.out.println("Invalid input.");
 			}
-		} while (numPlayers <= 0);
-		initializeDecks();
+		} while (numPlayers <= 0 || numPlayers > maxPlayers);
 		deal();
 		round();
 		input.close();
