@@ -1,20 +1,20 @@
 package deckSetup;
 
-// This class represents a single card in a deck as an object, with an enumerated suit and card class
+// This class represents a single card in a deck as an object, with an enumerated suit and card rank
 public class Card {
 	protected CardSuit suit;
-	protected CardClass value;
+	protected CardRank rank;
 	
-	public Card(CardSuit suit, CardClass value) {
+	public Card(CardSuit suit, CardRank rank) {
 		this.suit = suit;
-		this.value = value;
+		this.rank = rank;
 	}
 	
 	public CardSuit getSuit() {
 		return suit;
 	}
 	
-	public CardClass getValue() {
-		return value;
+	public CardRank getRank() {
+		return rank;
 	}
 }

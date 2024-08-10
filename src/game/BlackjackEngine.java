@@ -50,7 +50,6 @@ public class BlackjackEngine extends GameEngine {
 		 * for at least one player as well as the dealer to draw cards up to or past a score of 21. */
 		int numCards = 0;
 		int deckSumValue = 0;
-		
 		for (Card i : referenceDeck) {
 			numCards++;
 			deckSumValue += assignCardScore(i);
@@ -60,8 +59,8 @@ public class BlackjackEngine extends GameEngine {
 		 * while the dealer must be able to draw at least three cards. */
 		int maxPlayersByCards = (numCards - 3)/4;
 		
-		// For blackjack, every player and the dealer must be able to at least reach 21.
-		int maxPlayersBySumValue = deckSumValue/21;
+		// For blackjack, every player and the dealer must be able to at least reach 21 on all of their hands, including split hands.
+		int maxPlayersBySumValue = (deckSumValue - 21) / 42;
 		
 		// The smaller of the two maximums determines the limit and is the value that is returned.
 		if (maxPlayersByCards <= maxPlayersBySumValue) {
@@ -71,50 +70,18 @@ public class BlackjackEngine extends GameEngine {
 		}
 	}
 	
-	/* assignCardScore is a helper method that, given a card, returns its Blackjack-assigned value.
-	 * in Blackjack, individual cards are assigned values. The value of the ace card is the only one
-	 * that various, changing if its original value of 11 results in a hand with a score higher than
-	 * 21. That scenario is handled by the scoreHandler method, and otherwise the value of the ace
-	 * is assumed to always be 11. */
-	public int assignCardScore(Card card) {
-		switch(card.getValue()) {
-			case TWO:
-				return 2;
-			case THREE:
-				return 3;
-			case FOUR:
-				return 4;
-			case FIVE:
-				return 5;
-			case SIX:
-				return 6;
-			case SEVEN:
-				return 7;
-			case EIGHT:
-				return 8;
-			case NINE:
-				return 9;
-			case TEN: case JACK: case QUEEN: case KING:
-				return 10;
-			case ACE:
-				return 11;
-			//For now, only standard playing cards are provided values.
-			default:
-				return 0;
-		}
-	}
-	
 	/* deal handles the drawing of cards from the main deck, creating a HashMap
-	 * connecting the dealer and players by number to their respective hands of cards. */
+	 * connecting the dealer and players by index number, with the dealer always
+	 * receiving the index of 0, to their respective hands of cards. */
 	public void deal() {
-		/* 1 is added to numPlayers to account for the dealer, whose statistics are stored
-		 * at index 0 in the resulting arrays. That value is then doubled to provide ample
-		 * space for additional 'players' that will hold the second hands caused by actual
-		 * players splitting their original hands should they be able to and decide to. */
-		scores = new int[(numPlayers + 1) * 2];
-		acesUnaccountedFor = new int[(numPlayers + 1) * 2];
-		isDone = new boolean[(numPlayers + 1) * 2];
-		blackjack = new boolean[(numPlayers + 1) * 2];
+		/* The value of numPlayers is doubled to provide ample space for additional 'players'
+		 * that will hold the second hands caused by actual players splitting their original
+		 * hands should they be able to and decide to. 1 is added to that value to account
+		 * for the dealer, whose statistics are stored at index 0 in the resulting arrays. */
+		scores = new int[(numPlayers * 2) + 1];
+		acesUnaccountedFor = new int[(numPlayers * 2) + 1];
+		isDone = new boolean[(numPlayers * 2) + 1];
+		blackjack = new boolean[(numPlayers * 2) + 1];
 		
 		cards = new HashMap<Integer, ArrayList<Card>>();
 		for (int i = 0; i <= numPlayers; i++) {
@@ -135,18 +102,19 @@ public class BlackjackEngine extends GameEngine {
 			}
 		}
 	}
-	
-	/* drawFromDeck is a helper function that, given a player/dealer and whether
-	 * or not it should be hidden, assigns that card to their deck and updates the
-	 * score as appropriate. In Blackjack, the dealer hides the second card they draw. */
+
+	/* drawFromDeck is a method that, given a player/dealer and whether or not
+	 * the card they receive should be hidden from anyone else's view, assigns
+	 * that card to their deck and updates the score as appropriate. In Blackjack,
+	 * the dealer is the only one who hides a card, hiding the second card they draw. */
 	public void drawFromDeck(int playerNum, boolean hideCard) {
 		Card drawn = mainDeck.remove(0);
 		int adjustedplayerNum = playerNumAdjust(playerNum);
 		if (playerNum != 0) {
-			System.out.println("Player " + adjustedplayerNum + " has drawn a " + drawn.getValue() + " of " + drawn.getSuit() + "!");
+			System.out.println("Player " + adjustedplayerNum + " has drawn a " + drawn.getRank() + " of " + drawn.getSuit() + "!");
 		}
 		else if (!hideCard) {
-			System.out.println("The dealer has drawn a " + drawn.getValue() + " of " + drawn.getSuit() + "!");
+			System.out.println("The dealer has drawn a " + drawn.getRank() + " of " + drawn.getSuit() + "!");
 		} else {
 			System.out.println("The dealer has drawn their second card! You cannot see what it is!");
 		}
@@ -154,32 +122,189 @@ public class BlackjackEngine extends GameEngine {
 		if (!hideCard) {
 			scores[playerNum] += assignCardScore(drawn);
 		}
-		if (drawn.getValue() == CardClass.ACE) {
+		if (drawn.getRank() == CardRank.ACE) {
 			acesUnaccountedFor[playerNum]++;
 		}
 		cards.get(playerNum).add(drawn);
 	}
+
+	/* assignCardScore is a method that, when given a card, returns its Blackjack-assigned value.
+	 * in Blackjack, individual cards are assigned values depending on their rank. The value of
+	 * the ace card is the only one that varies, changing if its original value of 11 results in
+	 * a hand with a score higher than 21. That scenario is handled by the scoreHandler method,
+	 * and otherwise the value of the ace always assumed to be 11. */
+	public int assignCardScore(Card card) {
+		switch(card.getRank()) {
+			case TWO:
+				return 2;
+			case THREE:
+				return 3;
+			case FOUR:
+				return 4;
+			case FIVE:
+				return 5;
+			case SIX:
+				return 6;
+			case SEVEN:
+				return 7;
+			case EIGHT:
+				return 8;
+			case NINE:
+				return 9;
+			case TEN: case JACK: case QUEEN: case KING:
+				return 10;
+			case ACE:
+				return 11;
+			//Only standard playing cards are provided values.
+			default:
+				return 0;
+		}
+	}
 	
-	// dealerReveal is a helper function that allows the dealer to reveal their hidden card, updating the score as appropriate.
+	/* round handles the actual playing of the game. Currently, a single round occurs when
+	 * this method is called, where cards are dealt, each player must decide how they play via
+	 * prompts and inputs, the dealer plays via set rules, and the end results are determined. */
+	public void round() {
+		/* At the start, after cards have been dealt, the dealer's score based on their visible card
+		 * and each player's score is provided, with blackjacks being announced. */
+		System.out.println("The dealer has a known score of " + scores[0] + "!");
+		for (int i = 1; i <= numPlayers; i++) {
+			System.out.println("Player " + i + " has a score of " + scores[i] + "!");
+			if (scores[i] == 21) {
+				System.out.println("Player " + i + " has a blackjack! They automatically hold!");
+				blackjack[i] = true;
+				isDone[i] = true;
+			}
+		}
+		/* If the dealer's second card results in them having a blackjack, the second card is revealed,
+		 * the round is ended, and the final results are determined. */
+		dealerReveal(true);
+		if (scores[0] == 21) {
+			evaluateEnd();
+			return;
+		}
+		
+		// Otherwise, the first player begins their turn.
+		else {
+			for (int i = 1; i <= numPlayers; i++) {
+				boolean isSplit = false;
+				Scanner input = new Scanner(System.in);
+				
+				// If the player has been dealt two cards with the same value, they are given the option to split their hand.
+				if (cards.get(i).get(0).getRank() == cards.get(i).get(1).getRank()) {
+					System.out.println("Player " + i + " has two cards of the same class! Would you like to Split, Yes or No?");
+					String split = input.nextLine();
+					/* If the player says yes, one card remains in the original hand while the other is
+					 * assigned to a new hand, with a player index equivalent to the player's index plus
+					 * the number of players, and corresponding values are updated as necessary. */
+					if (split.toLowerCase().equals("yes")) {
+						isSplit = true;
+						cards.put(i + numPlayers, new ArrayList<Card>());
+						scores[i] -= assignCardScore(cards.get(i).get(0));
+						scores[i + numPlayers] += assignCardScore(cards.get(i).get(0));
+						if (cards.get(i).get(0).getRank() == CardRank.ACE) {
+							acesUnaccountedFor[i]--;
+							acesUnaccountedFor[i + numPlayers]++;
+						}
+						cards.get(i + numPlayers).add(cards.get(i).remove(0));
+						// After a split has been performed, the player's first hand automatically receives a new card.
+						drawFromDeck(i, false);
+					}
+				}
+				
+				// Regardless of whether a split occurs or not, the player's turn begins.
+				playerTurn(i, isSplit);
+			}
+			
+			/* Once every player's turn has been completed, the dealer's turn begins.
+			 * The dealer reveals their second card and draws until they have a score of at least 18 or go over 21. */
+			dealerReveal(false);
+			while (isDone[0] == false) {
+				System.out.println("The dealer has a score of " + scores[0] + "!");
+				if (scores[0] >= 18) {
+					System.out.println("The dealer stands!");
+					isDone[0] = true;
+				}
+				else {
+					drawFromDeck(0, false);
+					scoreHandler(0);
+				}
+			}
+			
+			// Once the dealer's turn ends, the round ends and the results are determined.
+			evaluateEnd();
+		}
+	}
+
+	/* dealerReveal is a method that, given whether or not the dealer has a blackjack,
+	 * reveals the dealer's hidden card when called as appropriate for the situation,
+	 * updating the score and blackjack condition for the dealer correspondingly. */
 	public void dealerReveal(boolean start) {
 		Card hidden = cards.get(0).get(1);
 		if (scores[0] + assignCardScore(hidden) == 21) {
 			/* In the event the dealer has a blackjack due to the second card,
 			 * they reveal the card, at which point the game immediately ends
 			 * and the final results are determined. */
-			System.out.println("The dealer reveals their second card! It is a " + hidden.getValue() + " of " + hidden.getSuit() + "!");
+			System.out.println("The dealer reveals their second card! It is a " + hidden.getRank() + " of " + hidden.getSuit() + "!");
 			System.out.println("The dealer has a blackjack!");
 			scores[0] += assignCardScore(hidden);
 			blackjack[0] = true;
 		} else if (!start) {
 			// Otherwise, the dealer waits until every other player is done before revealing their second card.
-			System.out.println("The dealer reveals their second card! It is a " + hidden.getValue() + " of " + hidden.getSuit() + "!");
+			System.out.println("The dealer reveals their second card! It is a " + hidden.getRank() + " of " + hidden.getSuit() + "!");
 			scores[0] += assignCardScore(hidden);
 		} else {
 			return;
 		}
 	}
 	
+	/* playerTurn is a method called by round that, given the player's index number and whether
+	 * or not they have a second hand, handles the entirety of that player's turn, including their
+	 * second hand if the player has split their hand.*/
+	public void playerTurn(int playerNum, boolean isSecondHand) {
+		Scanner input = new Scanner(System.in);
+		int adjustedPlayerNum = playerNumAdjust(playerNum);
+		System.out.println("Player " + adjustedPlayerNum + "'s turn!");
+		// The player is not done with their turn until they choose to stop drawing cards, reach a score of 21, or overdraw.
+		while (isDone[playerNum] == false) {
+			System.out.println("Player " + (adjustedPlayerNum) + " has a score of " + scores[playerNum] + "!");
+			System.out.println("Stand or Hit?");
+			String choice = input.nextLine();
+			
+			if (choice.toLowerCase().equals("stand")) {
+				isDone[playerNum] = true;
+			}
+			else if (choice.toLowerCase().equals("hit")) {
+				drawFromDeck(playerNum, false);
+				scoreHandler(playerNum);
+			}
+			else {
+				System.out.println("I'm sorry, I do not understand.");
+			}
+			
+			/* In the event that the player split their hand, the second hand is handled
+			 * immediately after the player is done with their first hand */
+			if(isSecondHand) {
+				System.out.println("Player " + playerNum + "'s second hand!");
+				playerNum += numPlayers;
+				isSecondHand = false;
+			}
+		}
+	}
+
+	/* For printing purposes, playerNumAdjust accounts for split hands given playerNum,
+	 * which is greater than the number of players for second hands produced as the result
+	 * of established players splitting hands.
+	 */
+	public int playerNumAdjust(int playerNum) {
+			if (playerNum <= numPlayers) {
+				return playerNum;
+			}
+			else {
+				return playerNum - numPlayers;
+			}
+	}
+
 	// scoreHandler deals with situations that may end the player's/dealer's turn.
 	public void scoreHandler(int playerNum) {
 		int adjustedPlayerNum = playerNumAdjust(playerNum);
@@ -216,18 +341,6 @@ public class BlackjackEngine extends GameEngine {
 		else {
 			return;
 		}
-	}
-	
-	/* For printing purposes, this accounts for split hands,
-	 * which are stored in the HashMap at values where i is greater than the number of players.
-	 */
-	public int playerNumAdjust(int playerNum) {
-			if (playerNum <= numPlayers) {
-				return playerNum;
-			}
-			else {
-				return playerNum % numPlayers;
-			}
 	}
 	
 	/* evaluateEnd determines who won, lost, or tied at the end of the game, when all players
@@ -274,114 +387,7 @@ public class BlackjackEngine extends GameEngine {
 		}
 	}
 	
-	/* round handles the actual playing of the game, a single round where cards are dealt, each player
-	 * must decide how they play, the dealer plays, and the end results are determined. */
-	public void round() {
-		/* At the start, after cards have been dealt, the dealer's score based on their visible card
-		 * and each player's score is provided, with blackjacks being announced. */
-		System.out.println("The dealer has a known score of " + scores[0] + "!");
-		for (int i = 1; i <= numPlayers; i++) {
-			System.out.println("Player " + i + " has a score of " + scores[i] + "!");
-			if (scores[i] == 21) {
-				System.out.println("Player " + i + " has a blackjack! They automatically hold!");
-				blackjack[i] = true;
-				isDone[i] = true;
-			}
-		}
-		/* If the dealer's second card results in them having a blackjack, the second card is revealed,
-		 * the round is ended, and the final results are determined. */
-		dealerReveal(true);
-		if (scores[0] == 21) {
-			evaluateEnd();
-			return;
-		}
-		
-		// Otherwise, the first player begins their turn.
-		else {
-			for (int i = 1; i <= numPlayers; i++) {
-				boolean isSplit = false;
-				Scanner input = new Scanner(System.in);
-				
-				// If the player has been dealt two cards with the same value, they are given the option to split their hand.
-				if (cards.get(i).get(0).getValue() == cards.get(i).get(1).getValue()) {
-					System.out.println("Player " + i + " has two cards of the same class! Would you like to Split, Yes or No?");
-					String split = input.nextLine();
-					/* If the player says yes, one card remains in the original hand while the other is
-					 * assigned to a new hand, with a player index equivalent to the player's index plus
-					 * the number of players, and corresponding values are updated as necessary. */
-					if (split.toLowerCase().equals("yes")) {
-						isSplit = true;
-						cards.put(i + numPlayers, new ArrayList<Card>());
-						scores[i] -= assignCardScore(cards.get(i).get(0));
-						scores[i + numPlayers] += assignCardScore(cards.get(i).get(0));
-						if (cards.get(i).get(0).getValue() == CardClass.ACE) {
-							acesUnaccountedFor[i]--;
-							acesUnaccountedFor[i + numPlayers]++;
-						}
-						cards.get(i + numPlayers).add(cards.get(i).remove(0));
-						// After a split has been performed, the player's first hand automatically receives a new card.
-						drawFromDeck(i, false);
-					}
-				}
-				
-				// Regardless of whether a split occurs or not, the player's turn begins.
-				playerTurn(i, isSplit);
-			}
-			
-			/* Once every player's turn has been completed, the dealer's turn begins.
-			 * The dealer reveals their second card and draws until they have a score of at least 18 or go over 21. */
-			dealerReveal(false);
-			while (isDone[0] == false) {
-				System.out.println("The dealer has a score of " + scores[0] + "!");
-				if (scores[0] >= 18) {
-					System.out.println("The dealer stands!");
-					isDone[0] = true;
-				}
-				else {
-					drawFromDeck(0, false);
-					scoreHandler(0);
-				}
-			}
-			
-			// Once the dealer's turn ends, the round ends and the results are determined.
-			evaluateEnd();
-		}
-	}
-	
-	public void playerTurn(int playerNum, boolean isSecondHand) {
-		Scanner input = new Scanner(System.in);
-		int adjustedPlayerNum = playerNumAdjust(playerNum);
-		System.out.println("Player " + adjustedPlayerNum + "'s turn!");
-		// The player is not done with their turn until they choose to stop drawing cards, reach a score of 21, or overdraw.
-		while (isDone[playerNum] == false) {
-			System.out.println("Player " + (adjustedPlayerNum) + " has a score of " + scores[playerNum] + "!");
-			System.out.println("Stand or Hit?");
-			String choice = input.nextLine();
-			
-			if (choice.toLowerCase().equals("stand")) {
-				isDone[playerNum] = true;
-			}
-			else if (choice.toLowerCase().equals("hit")) {
-				drawFromDeck(playerNum, false);
-				scoreHandler(playerNum);
-			}
-			else {
-				System.out.println("I'm sorry, I do not understand.");
-			}
-			
-			if(isDone[playerNum] && isSecondHand) {
-				isDone[playerNum] = false;
-				System.out.println("Player " + playerNum + "'s second hand!");
-				playerNum += numPlayers;
-				isSecondHand = false;
-			}
-		}
-		
-		/* In the event that the player split their hand, the second hand is handled
-		 * immediately after the player is done with their first hand. */
-	}
-	
-	// game is the core method of Blackjack Engine, handling the setup and running of the round .
+	// game is the core method of Blackjack Engine, handling the setup and running of the round.
 	public void game() {
 		// If the deck cannot be used to play Blackjack, the player is prompted to try another deck and the program immediately ends.
 		initializeDecks();
@@ -395,6 +401,8 @@ public class BlackjackEngine extends GameEngine {
 		numPlayers = 0;
 		Scanner input = new Scanner(System.in);
 		
+		/* Besides the dealer, Blackjack requires a minimum of one player, as well as a maximum that can be supported
+		 * by the deck without requiring more cards than the deck could provide, which would result in logistical errors. */
 		do {
 		System.out.println("For Blackjack, the deck provided can support at most " + maxPlayers + " Players. How many players would you like?");
 		System.out.println("Please select an answer between 1 and " + maxPlayers + ".");
@@ -413,7 +421,7 @@ public class BlackjackEngine extends GameEngine {
 		input.close();
 	}
 	
-	// For running the game as a separate application
+	// main is included to allow the the game to be run as a self-contained program.
 	public static void main(String args[]) {
 		BlackjackEngine blackjack = new BlackjackEngine();
 		blackjack.game();

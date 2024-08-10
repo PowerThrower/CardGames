@@ -52,7 +52,7 @@ public class Deck {
 				if (value == suitOfCards[0]) {
 					continue;
 				}
-				Card card = new Card(CardSuit.valueOf(suitOfCards[0]), CardClass.valueOf(value));
+				Card card = new Card(CardSuit.valueOf(suitOfCards[0]), CardRank.valueOf(value));
 				gameDeck.add(card);
 			}
 		}
