@@ -1,4 +1,4 @@
-package blackjack;
+package game;
 
 import deckSetup.Card;
 

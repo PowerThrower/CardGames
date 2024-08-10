@@ -1,4 +1,4 @@
-package blackjack;
+package game;
 
 import deckSetup.*;
 import java.io.*;
@@ -141,8 +141,9 @@ public class BlackjackEngine extends GameEngine {
 	 * score as appropriate. In Blackjack, the dealer hides the second card they draw. */
 	public void drawFromDeck(int playerNum, boolean hideCard) {
 		Card drawn = mainDeck.remove(0);
+		int adjustedplayerNum = playerNumAdjust(playerNum);
 		if (playerNum != 0) {
-			System.out.println("Player " + (playerNum % numPlayers) + " has drawn a " + drawn.getValue() + " of " + drawn.getSuit() + "!");
+			System.out.println("Player " + adjustedplayerNum + " has drawn a " + drawn.getValue() + " of " + drawn.getSuit() + "!");
 		}
 		else if (!hideCard) {
 			System.out.println("The dealer has drawn a " + drawn.getValue() + " of " + drawn.getSuit() + "!");
@@ -181,10 +182,11 @@ public class BlackjackEngine extends GameEngine {
 	
 	// scoreHandler deals with situations that may end the player's/dealer's turn.
 	public void scoreHandler(int playerNum) {
+		int adjustedPlayerNum = playerNumAdjust(playerNum);
 		/* If a player, not the dealer, gets a score of 21, their turn is automatically
 		 * ended to prevent them from overdrawing, which would be an immediate loss. */
 		if (scores[playerNum] == 21 && playerNum != 0) {
-			System.out.println("Player " + playerNum + " has a score of 21! They automatically stand!");
+			System.out.println("Player " + adjustedPlayerNum + " has a score of 21! They automatically stand!");
 			isDone[playerNum] = true;
 			return;
 		}
@@ -197,7 +199,7 @@ public class BlackjackEngine extends GameEngine {
 				return;
 			}
 			else {
-				System.out.println("Player " + playerNum + " has overdrawn! They lose!");
+				System.out.println("Player " + adjustedPlayerNum + " has overdrawn! They lose!");
 				isDone[playerNum] = true;
 				return;
 			}
@@ -205,7 +207,7 @@ public class BlackjackEngine extends GameEngine {
 		/* If the player overdraws but has an ace that is unaccounted for, the value of that
 		 * ace will be automatically reduced from 11 to 1, and the player's turn will continue. */
 		else if (scores[playerNum] > 21){
-			System.out.println("Player " + playerNum + " has overdrawn but has an Ace valued at 11! Reducing value to 1!");
+			System.out.println("Player " + adjustedPlayerNum + " has overdrawn but has an Ace valued at 11! Reducing value to 1!");
 			scores[playerNum] -= 10;
 			acesUnaccountedFor[playerNum]--;
 			return;
@@ -216,6 +218,18 @@ public class BlackjackEngine extends GameEngine {
 		}
 	}
 	
+	/* For printing purposes, this accounts for split hands,
+	 * which are stored in the HashMap at values where i is greater than the number of players.
+	 */
+	public int playerNumAdjust(int playerNum) {
+			if (playerNum <= numPlayers) {
+				return playerNum;
+			}
+			else {
+				return playerNum % numPlayers;
+			}
+	}
+	
 	/* evaluateEnd determines who won, lost, or tied at the end of the game, when all players
 	 * and the dealer have either stopped drawing, gotten a score of 21, or gone over 21. */
 	public void evaluateEnd() {
@@ -224,15 +238,8 @@ public class BlackjackEngine extends GameEngine {
 				continue;
 			}
 			
-			// This accounts for split hands, which are stored in the HashMap at values where i is greater than the number of players.
-			int playerNum;
-			if (i <= numPlayers) {
-				playerNum = i;
-			}
-			else {
-				playerNum = i % numPlayers;
-			}
-			
+			int playerNum = playerNumAdjust(i);
+
 			/* If the dealer got a blackjack at the start of the game, the player must have also
 			 * gotten a blackjack to tie, or else they automatically lose to the dealer. */
 			if (blackjack[0]) {
@@ -318,48 +325,7 @@ public class BlackjackEngine extends GameEngine {
 				}
 				
 				// Regardless of whether a split occurs or not, the player's turn begins.
-				System.out.println("Player " + i + "'s turn!");
-				// The player is not done with their turn until they choose to stop drawing cards, reach a score of 21, or overdraw.
-				while (isDone[i] == false) {
-					System.out.println("Player " + i + " has a score of " + scores[i] + "!");
-					System.out.println("Stand or Hit?");
-					String choice = input.nextLine();
-					
-					if (choice.toLowerCase().equals("stand")) {
-						isDone[i] = true;
-					}
-					else if (choice.toLowerCase().equals("hit")) {
-						drawFromDeck(i, false);
-						scoreHandler(i);
-					}
-					else {
-						System.out.println("I'm sorry, I do not understand.");
-					}
-				}
-				
-				/* In the event that the player split their hand, the second hand is handled
-				 * immediately after the player is done with their first hand. */
-				if (isSplit) {
-					System.out.println("Player " + i + "'s second hand!");
-					int j = i + numPlayers;
-					
-					while (isDone[j] == false) {
-						System.out.println("Player " + (j - numPlayers) + " has a score of " + scores[j] + "!");
-						System.out.println("Stand or Hit?");
-						String choice = input.nextLine();
-					
-						if (choice.toLowerCase().equals("stand")) {
-							isDone[j] = true;
-						}
-						else if (choice.toLowerCase().equals("hit")) {
-							drawFromDeck(j, false);
-							scoreHandler(j);
-						}
-						else {
-							System.out.println("I'm sorry, I do not understand.");
-						}
-					}
-				}
+				playerTurn(i, isSplit);
 			}
 			
 			/* Once every player's turn has been completed, the dealer's turn begins.
@@ -380,6 +346,39 @@ public class BlackjackEngine extends GameEngine {
 			// Once the dealer's turn ends, the round ends and the results are determined.
 			evaluateEnd();
 		}
+	}
+	
+	public void playerTurn(int playerNum, boolean isSecondHand) {
+		Scanner input = new Scanner(System.in);
+		int adjustedPlayerNum = playerNumAdjust(playerNum);
+		System.out.println("Player " + adjustedPlayerNum + "'s turn!");
+		// The player is not done with their turn until they choose to stop drawing cards, reach a score of 21, or overdraw.
+		while (isDone[playerNum] == false) {
+			System.out.println("Player " + (adjustedPlayerNum) + " has a score of " + scores[playerNum] + "!");
+			System.out.println("Stand or Hit?");
+			String choice = input.nextLine();
+			
+			if (choice.toLowerCase().equals("stand")) {
+				isDone[playerNum] = true;
+			}
+			else if (choice.toLowerCase().equals("hit")) {
+				drawFromDeck(playerNum, false);
+				scoreHandler(playerNum);
+			}
+			else {
+				System.out.println("I'm sorry, I do not understand.");
+			}
+			
+			if(isDone[playerNum] && isSecondHand) {
+				isDone[playerNum] = false;
+				System.out.println("Player " + playerNum + "'s second hand!");
+				playerNum += numPlayers;
+				isSecondHand = false;
+			}
+		}
+		
+		/* In the event that the player split their hand, the second hand is handled
+		 * immediately after the player is done with their first hand. */
 	}
 	
 	// game is the core method of Blackjack Engine, handling the setup and running of the round .
